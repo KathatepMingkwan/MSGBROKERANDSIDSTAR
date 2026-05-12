@@ -153,8 +153,25 @@
                 <td id="altitude" onclick="sortByAltitude();" style="text-align: right">Altitude</td>
                 <td id="speed" onclick="sortBySpeed();" style="text-align: right">Speed</td>
                 <td id="distance" onclick="sortByDistance();" style="text-align: right">Distance</td>
+                <td id="track" onclick="sortByTrack();" style="text-align: right;">Track</td>
+                <td id="msgs" onclick="sortByMsgs();" style="text-align: right;">Msgs</td>
+                <td id="seen" onclick="sortBySeen();" style="text-align: right;">Age</td>
               </tr>
             </thead>
+            <tbody>
+              <tr id="plane_row_template" class="plane_table_row hidden">
+                <td>ICAO</td>
+                <td><img style="width: 20px; height: 12px" src="about:blank" alt="Flag"></td>
+                <td>FLIGHT</td>
+                <td style="text-align: right;">SQUAWK</td>
+                <td style="text-align: right;">ALTITUDE</td>
+                <td style="text-align: right;">SPEED</td>
+                <td style="text-align: right;">DISTANCE</td>
+                <td style="text-align: right;">TRACK</td>
+                <td style="text-align: right;">MSGS</td>
+                <td style="text-align: right;">SEEN</td>
+              </tr>
+            </tbody>
           </table>
         </div>
 

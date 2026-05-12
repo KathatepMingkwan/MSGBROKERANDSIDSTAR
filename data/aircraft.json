@@ -1,8 +1,43 @@
 {
-    "icao": "880123",
-    "callsign": "THA123",
-    "altitude": 32000,
-    "speed": 450,
-    "lat": 13.7563,
-    "lon": 100.5018
+    "now": 1747040000,
+    "messages": 1250,
+    "aircraft": [
+        {
+            "hex": "880123",
+            "flight": "THA123",
+
+            "squawk": "1200",
+            "altitude": 32000,
+            "speed": 450,
+            "distance": 12.5,
+            "track": 180,
+
+            "msgs": 542,
+            "seen": 0.2,
+            
+            "lat": 13.7563,
+            "lon": 100.5018,
+
+            "rssi": -18.5
+        },
+        {
+            "hex": "A1B2C3",
+            "flight": "AIC701",
+
+            "squawk": "7700",
+            "altitude": 28000,
+            "speed": 420,
+            "distance": 35.2,
+            "track": 90,
+
+            "msgs": 320,
+            "seen": 1.1,
+            
+            "lat": 13.7000,
+            "lon": 100.6000,
+
+            "rssi": -20.1
+        }
+    ]
+   
 }
