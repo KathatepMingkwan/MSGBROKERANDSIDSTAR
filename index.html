@@ -3,12 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="https://openlayers.org/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <link rel="stylesheet" type="text/css" href="jquery-ui.min.css" />
+    <link rel="stylesheet" type="text/css" href="css/button_sidstar.css" />
+    
+      <link rel="stylesheet" href="ol3/ol-3.17.1.css" type="text/css" />
+
+
     
     <title>Using OpenLayers with Vite</title>
   </head>
   
-  <body>
+  <body onload="initialize()">
     <div style="position: absolute; top: 120px; left: 10px; z-index: 1001;">
       <button id="toggle-sid">SID</button>
       <button id="toggle-star">STAR</button>
@@ -115,7 +121,16 @@
             </tr>
 
             <tr id="infoblock_country" class="infoblock_body">
-              <td colspan="2"></td>
+              <td colspan="2">Country of registration: <span id="selected_country">n/a</span></td>
+            </tr>
+
+            <tr class="infoblock_body">
+              <td style="width: 55%">Altitude: <span id="selected_altitude"></span></td>
+              <td style="width: 45%">Squawk: <span id="selected_squawk"></span></td>
+            </tr>
+
+            <tr class="infoblock_body">
+              <td>Spedd: <span> id</span></td>
             </tr>
 
           </table>

@@ -1,0 +1,21 @@
+.ol-control,.ol-scale-line {
+    position: absolute;
+    padding: 2px;
+}
+
+.ol-box {
+    box-sizing: border-box;
+}
+
+.ol-mouse-position {
+    top: 8px;
+    right: 8px;
+    position: absolute
+}
+
+.ol-scale-line {
+    background: rgba(0, 60, 136, .3);
+    border-radius: 4px;
+    bottom: 8px;
+    left: 8px;
+}

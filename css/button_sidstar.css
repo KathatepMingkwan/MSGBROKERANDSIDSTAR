@@ -1,0 +1,23 @@
+#toggle-sid, #toggle-star {
+    background-color: rgb(160, 163, 162);
+    color: rgb(255, 255, 255);
+    border: none;
+    padding: 5px 10px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 5px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.5s ease, transfrom 0.2s ease;
+    z-index: 1000;
+}
+
+#toggle-sid:hover, #toggle-star:hover {
+    background-color: rgb(7, 41, 151);
+    transform: scale(1.05);
+}
+
+#toggle-sid:active, #toggle-star:active {
+    background-color: rgb(43, 46, 226);
+    transform: scale(0.95);
+}

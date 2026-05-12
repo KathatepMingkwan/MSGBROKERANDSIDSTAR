@@ -9,14 +9,14 @@ connection = pika.BlockingConnection(
 channel = connection.channel()
 
 #สร้าง queue
-channel.queue_declare(queue='hello_queue')
+channel.queue_declare(queue='adsb_queue')
 
 
 def callback(ch, method, properties, body):
     print("Received:", body.decode())
 
 channel.basic_consume(
-        queue='hello_queue',
+        queue='adsb_queue',
         on_message_callback=callback,
         auto_ack=True
 )
