@@ -5,6 +5,8 @@
 
 .ol-box {
     box-sizing: border-box;
+    border-radius: 2px;
+    border: 2px solid #00f;
 }
 
 .ol-mouse-position {
@@ -18,4 +20,91 @@
     border-radius: 4px;
     bottom: 8px;
     left: 8px;
+}
+
+.ol-scale-line_inner {
+    border: 1px solid #eee;
+    border-top: none;
+    color: #eee;
+    font-size: 10px;
+    text-align: center;
+    margin: 1px;
+    will-change: contents, width;
+}
+
+.ol-overlay-container {
+    will-change: left,right,top,bottom;
+}
+
+.ol-unsupported {
+    display: none;
+}
+
+.ol-viewport .ol-unselectedable {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent
+}
+
+.ol-control {
+    background-color: rgba(255, 255, 255, .4);
+    border-radius: 4px;
+}
+
+.ol-control:hover {
+    background-color: rgba(255, 255, 255, .6);
+}
+
+.ol-zoom {
+    top: .5em;
+    left: .5em;
+}
+
+.ol-rotate {
+    top: .5em;
+    left: .5em;
+    transition: opacity .25s linear,visibility 0s linear;
+}
+
+.ol-rotate.ol-hidden {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .25s linear,visibility 0s linear .25s;
+}
+
+.ol-zoom-extent {
+    top: 4.643em;
+    left: .5em;
+}
+
+.ol-full-screen {
+    right: .5em;
+    top: .5em;
+}
+
+@media print {
+    .ol-control {
+        display: none
+    }
+}
+
+.ol-control button {
+    display: block;
+    margin: 1px;
+    padding: 0;
+    color: #fff;
+    font-size: 1.14em;
+    font-weight: 700;
+    text-decoration: none;
+    text-align: center;
+    height: 1.375em;
+    width: 1.375em;
+    line-height: .4em;
+    background-color: rgba(0,60,136,.5);
+    border: none;
+    border-radius: 2px;
 }
