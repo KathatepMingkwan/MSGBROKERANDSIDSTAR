@@ -11,6 +11,10 @@ function processReceiverUpdate(data) {
     var now = data.now;
     var acs = data.aircraft;
 
+    if (MessageCountHistory.length > 0 && MessageCountHistory[MessageCountHistory.length-1].messages > data.messages) {
+        
+    }
+
 
 }
 
