@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="https://openlayers.org/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <title>Using OpenLayers with Vite</title>
+  </head>
+  
+  <body>
+    <div style="position: absolute; top: 120px; left: 10px; z-index: 1001;">
+      <button id="toggle-sid">SID</button>
+      <button id="toggle-star">STAR</button>
+    </div>
+    
+    <form id="loader" class="hidden">
+    </form>
+
+    <form id="airframes_post" method="POST" action="http://www.airframes.org/" target="_blank" class="hidden">
+      <input type="hidden" name="reg1" value="">
+      <input type="hidden" name="selcal" value="">
+      <input id="airframes_post_icao" type="hidden" name="ica024" value="">
+      <input type="hidden" name="submit" value="submit">
+    </form>
+    
+    
+    <div id="map_container">
+      <div id="map_canvas"></div>
+    </div>
+    
+    <div id="sidebar_container">
+      <div id="sidebar_canvas">
+        <div id="timestamps">
+          <table style="width: 100%">
+            <tr>
+              <td style="text-align: center"> <canvas id="utcclock"></canvas> </td>
+              <td style="text-align: center"> <canvas id="receiverclock"></canvas> </td>
+            </tr>
+
+            <tr>
+              <td style="text-align: center">UTC</td>
+              <td style="text-align: center">Last Update</td>
+            </tr>
+          </table>
+        </div>
+
+        <div id="sudo_buttons">
+          <table style="width: 100%">
+            <tr>
+              <td style="width: 150px; text-align: center;" class="pointer">
+                [ <span onclick="resetMap();">Reset Map</span> ]
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div id="dump1090_infoblock_heading">
+          <table style="width: 100%">
+            <tr class="infoblock_heading">
+              <td>
+                <b id="infoblock_name">DUMP1090</b>
+              </td>
+              <td style="text-align: right">
+                <a href="https://github.com/flightaware/dump1090" id="dump1090_version" target="_blank"></a>
+              </td>
+            </tr>
+          
+            <tr class="infoblock_body">
+              <td>&nbsp;</td>
+              <td>&nbsp;</td>
+            </tr>
+
+            <tr class="infoblock_body dim">
+              <td>(no aircraft selected)</td>
+              <td>&nbsp;</td>
+            </tr>
+
+            <tr class="infoblock_body">
+              <td>&nbsp;</td>
+              <td>&nbsp;</td>
+            </tr>
+
+            <tr class="infoblock_body">
+              <td>Aircraft (total): <span id="dump1090_total_ac">n/a</span></td>
+              <td>Messages: <span id="dump1090_message_rate">n/a</span>/sec</td>
+            </tr>
+
+            <tr class="infoblock_body">
+              <td>(with position): <span id="dump1090_total_ac_positions">n/a</span></td>
+              <td>History: <span id="dump1090_total_history">n/a</span> positions</td>
+            </tr>
+          </table>
+        </div>
+
+        <div id="selected_infoblock" class="hidden">
+          <table style="width: 100%">
+            <tr class="infoblock_body_heading">
+              <td colspan="2">
+                <b>
+                  <span if="selected_callsign" onclick="toggleFollowSelected();" class="pointer">n/a</span>
+                </b>
+                <span id="selected_follow" onclick="toggleFollowSelected();" class="pointer">&#x21D2;</span>
+
+                <span id="selected_flag">
+                  <img style="width: 20px; height:12px" src="about:blank" alt="Flag">
+                </span>
+
+                <a href="http:www.airframes.org/" onclick="document.getElementById('horrible_hack').submit.call(document.getElementById('airframes_post')); return false;">
+                  <span id="seleced_icao"></span>
+                </a>
+                <span id="selected_registration"></span>
+
+              </td>
+            </tr>
+
+            <tr id="infoblock_country" class="infoblock_body">
+              <td colspan="2"></td>
+            </tr>
+
+          </table>
+        </div>
+
+      </div>
+    </div>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <script type="module" src="./main.js"></script>
+  
+  </body>
+</html>
