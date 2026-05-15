@@ -1,3 +1,5 @@
+const { cache } = require("react");
+
 var OLMap = null;
 var StaticFeatures = new ol.Collection();
 var PlaneIconFeatures = new ol.Collection();
@@ -6,6 +8,37 @@ var Planes = {};
 var PlanesOrdered = [];
 var SelectedPlane = null;
 var FollowSelected = false;
+
+var SpecialSquawks = {
+        '7500' : { cssClass: 'squawk7500', markerColor: 'rgb(255, 85, 85)', text: 'Aircraft Hijacking' },
+        '7600' : { cssClass: 'squawk7600', markerColor: 'rgb(0, 255, 255)', text: 'Radio Failure' },
+        '7700' : { cssClass: 'squawk7700', markerColor: 'rgb(255, 255, 0)', text: 'General Emergency' }
+};
+
+// Get current map settings
+var CenterLat, CenterLon, ZoomLvl, MapType;
+
+var Dump1090Version = "unknown version";
+var RefreshInterval = 1000;
+
+var PlaneRowTemplate = null;
+
+var TrackedAircraft = 0;
+var TrackedAircraftPositions = 0;
+var TrackedHistorySize = 0;
+
+var SitePosition = null;
+
+var ReceiverClock = null;
+
+var LastReceiverTimestamp = 0;
+var StaleReceiverCount = 0;
+var FetchPending = null;
+
+var MessageCountHistory = [];
+var MessageRate = 0;
+
+var NBSP='\u00a0';
 
 function processReceiverUpdate(data) {
     var now = data.now;
@@ -26,6 +59,41 @@ function processReceiverUpdate(data) {
         var hex = ac.hex;
         var plane = null;
 
+        if (Planes[hex]) {
+                plane = Planes[hex];
+        } else {
+                plane = new PlaneObject(hex);
+                plane.tr = PlaneRowTemplate.cloneNode(true);
+
+                if (hex[0] == '~') {
+                        plane.tr.cells[0].textContent = hex.substring(1);
+                        $(plane.tr).css('font-style', 'italic');
+                } else {
+                        plane.tr.cells[0].textContent = hex;
+                }
+
+                if (ShowFlags && plane.icaorange.flag_image !== null) {
+                        $('img', plane.tr.cells[1]).attr('src', FlagPath + plane.icaorange.flag_image);
+                        $('img', plane.tr.cells[1]).attr('title', plane.icaorange.country);
+                } else {
+                        $('img', plane.tr.cells[1]).css('display', 'none');
+                }
+
+                plane.tr.addEventListener('click', function(h, evt) {
+                        selectPlaneByHex(h, false);
+                        evt.preventDefault();
+                }.bind(undefined, hex));
+
+                plane.tr.addEventListener('dblclick', function(h, evt) {
+                        selectPlaneByHex(h, true);
+                        evt.preventDefault();
+                }.bind(undefined, hex));
+
+                Planes[hex] = plane;
+                PlanesOrdered.push(plane);
+        }
+
+        plane.updateData(now, ac);
 
     }
 
@@ -81,12 +149,82 @@ function fetchData() {
         });
 }
 
+var PositionHistorySize = 0;
 function initialize() {
+        //set page basics
+        document.title = PageName;
+        $("#infoblock_name").text(PageName);
 
+        PlaneRowTemplate = document.getElementById("plane_row_template");
+
+        if (!ShowClocks) {
+                $('#timestamps').css('display', 'none');
+        } else {
+                //create cool clock
+                new CoolClock({
+                        canvasId:       "utcclock",
+                        skinId:         "classic",
+                        displayRadius:  40,
+                        showSecondHand: true,
+                        gmtOffset:      "0",
+                        showDigital:    false,
+                        logClock:       false,
+                        logClockRev:    false
+                });
+
+                ReceiverClock = new CoolClock({
+                        canvasId:       "receiverClock",
+                        skinId:         "classic",
+                        displayRadius:  40,
+                        showSecondHand: true,
+                        gmtOffset:      null,
+                        showDigital:    false,
+                        logClock:       false,
+                        logClockRev:    false
+                });
+
+                //disable ticking on the receiver clock
+                ReceiverClock.tick = (function(){})
+        }
+
+        $("#lodaer").removeClass("hidden");
+
+
+        $.ajax({ url: 'data/receiver.json',
+                timeout: 5000,
+                cache: false,
+                dataType: 'json'})
+
+                .done(function(data) {
+                        if (typeof data.lat !== "undefined") {
+                                SiteShow = true;
+                                SiteLat = data.lat;
+                                SiteLon = data.lon;
+                                DefaultCenterLat = data.lat;
+                                DefaultCenterLon = data.lon;
+                        }
+
+                        Dump1090Version = data.version;
+                        RefreshInterval = data.refresh;
+                        PositionHistorySize = data.history;
+                })
+
+                .always(function() {
+                        initialize_map();
+                        start_load_history();
+                });
 }
 
+var CurrentHistoryFetch = null;
+var PositionHistoryBuffer = []
 function start_load_history() {
-
+        if (PositionHistorySize > 0) {
+                $("#loader_progress").attr('max', PositionHistorySize);
+                console.log("Starting to load history (" + PositionHistorySize + " items)");
+                load_history_item(0);
+        } else {
+                end_load_history();
+        }
 }
 
 function load_history_item(i) {
@@ -121,19 +259,69 @@ function end_load_history() {
 
     if (PositionHistoryBuffer.length > 0) {
         var now, last=0;
+
+        //sort history by timestamp
+        console.log("Sorting history");
+        PositionHistoryBuffer.sort(function(x,y) { return (x.now - y.now); });
+
+        //process history
+        for (var h = 0; h < PositionHistoryBuffer.length; ++h) {
+                now = PositionHistoryBuffer[h].now;
+                console.log("Applying history " + h + "/" + PositionHistoryBuffer.length + "at: " + now);
+        
+                console.log("Updating tracks at: " + now);
+                for (var i = 0; i < PlanesOrdered.length; ++i) {
+                        var plane = PlanesOrdered[i];
+                        plane.updateTrack((now - last) + 1);
+                }
+                
+                last = now;
+        }
+
+        //final pass to update all planes to their latest state
+        console.log("Final history cleanup pass");
+        for (var i = 0; i < PlanesOrdered.length; ++i) {
+                var plane = PlanesOrdered[i];
+                plane.updateTick(now);
+        }
+
+        LastReceiverTimestamp = last;
     }
+
+    PositionHistoryBuffer = null;
+
+    console.log("Completing init");
+
+    refreshTableInfo();
+    refreshSelected();
+    reaper();
+
+    window.setInterval(fetchData, RefreshInterval);
+    window.setInterval(reaper, 60000);
+
+    fetchData();
+    
 }
 
 function make_geodesic_circle(center, radius, points) {
-    var lat1 = center[1] * Math.PI / 180.0;
-    var geom = new ol.geom.LineString();
-    for (var i = 0; i <= points; ++i) {
-        var bearing = i * 2 *Math.PI / points;
+        var lat1 = center[1] * Math.PI / 180.0;
+        var geom = new ol.geom.LineString();
+        for (var i = 0; i <= points; ++i) {
+                var bearing = i * 2 *Math.PI / points;
 
-        var lat2 = Math.asin()
-    }
+                var lat2 = Math.asin( Math.sin(lat1)*Math.cos(angularDistance) +
+                        Math.cos(lat1)*Math.sin(angularDistance)*Math.cos(bearing) );
+                var lon2 = lon1 + Math.atan2(Math.sin(bearing)*Math.sin(angularDistance)*Math.cos(lat1),
+                        Math.cos(angularDistance)-Math.sin(lat1)*Math.sin(lat2));
+    
+                lat2 = lat2 * 180.0 / Math.PI;
+                lon2 = lon2 * 180.0 / Math.PI;
+                geom.appendCoordinate([lon2. lat2]);
+        }
+        return geom;
 }
 
+//initialize the map and start up timers to call various functions
 function initialize_map() {
     // Load stored map settings if present
         CenterLat = Number(localStorage['CenterLat']) || DefaultCenterLat;
@@ -624,24 +812,196 @@ function initialize_map() {
 }
 
 function reaper() {
-    var newPlanes = [];
-    for (var i = 0; i < PlanesOrdered.length; ++i) {
-        var plane = PlanesOrdered[i];
-    }
+        //look for planes where we have seen no messages for >300 seconds
+        var newPlanes = [];
+        for (var i = 0; i < PlanesOrdered.length; ++i) {
+                var plane = PlanesOrdered[i];
+                if (plane.seen > 300) {
+                        plane.tr.parentNode.removeChild(plane.tr);
+                        plane.tr = null;
+                        delete Planes[plane.icao];
+                        plane.destroy();
+                } else {
+                        //keep it
+                        newPlanes.push(plane);
+                }
+        };
+
+        PlanesOrdered = newPlanes;
+        refreshTableInfo();
+        refreshSelected();
 }
 
 function refreshPageTitle() {
-
+        if (!PlaneCountInTitle && !MessageRateInTitle)
+                return;
 }
 
+//refresh the detail window about the plane
 function refreshSelected() {
+        if (MessageCountHistory.length > 1) {
+                var message_time_delta = MessageCountHistory[MessageCountHistory.length-1].time - MessageCountHistory[0].time;
+                var message_count_delta = MessageCountHistory[MessageCountHistory.length-1].messages - MessageCountHistory[0].messages;
+                if (message_time_delta > 0)
+                        MessageRate = null;
+        }
+
+        refreshPageTitle();
 
 }
 
 function refreshTableInfo() {
+        var show_squawk_warning = false;
 
+        TrackedAircraft = 0
+        TrackedAircraftPositions = 0
+        TrackedHistorySize = 0
+
+        for (var i = 0; i < PlanesOrdered.length; i++) {
+                var tableplane = PlanesOrdered[i];
+                TrackedHistorySize += tableplane.history_size;
+                if (!tableplane.visible) {
+                        tableplane.tr.className = "plane_table_row hidden";
+                } else {
+                        TrackedAircraft++;
+                        var classes = "plane_table_row";
+
+                        if (tableplane.position !== null && tableplane.seen_pos < 60) {
+                                ++TrackedAircraftPositions
+                        }
+                }
+        }
 }
 
 function compareAplha() {
 
+}
+
+function compareNumeric(xf,yf) {
+        if (Math.abs(xf - yf) < 1e-9)
+                return 0;
+
+        return xf - yf;
+}
+
+function sortByICAO()     { sortBy('icao',    compareAlpha,   function(x) { return x.icao; }); }
+function sortByFlight()   { sortBy('flight',  compareAlpha,   function(x) { return x.flight; }); }
+function sortBySquawk()   { sortBy('squawk',  compareAlpha,   function(x) { return x.squawk; }); }
+function sortByAltitude() { sortBy('altitude',compareNumeric, function(x) { return (x.altitude == "ground" ? -1e9 : x.altitude); }); }
+function sortBySpeed()    { sortBy('speed',   compareNumeric, function(x) { return x.speed; }); }
+function sortByDistance() { sortBy('sitedist',compareNumeric, function(x) { return x.sitedist; }); }
+function sortByTrack()    { sortBy('track',   compareNumeric, function(x) { return x.track; }); }
+function sortByMsgs()     { sortBy('msgs',    compareNumeric, function(x) { return x.messages; }); }
+function sortBySeen()     { sortBy('seen',    compareNumeric, function(x) { return x.seen; }); }
+function sortByCountry()  { sortBy('country', compareAlpha,   function(x) { return x.icaorange.country; }); }
+
+var sortId = '';
+var sortCompare = null;
+var sortExtract = null;
+var sortAscending = true;
+
+function sortFunction(x,y) {
+        var xv = x._sort_value;
+        var yv = y._sort_value;
+
+        // always sort missing values at the end, regardless of
+        // ascending/descending sort
+        if (xv == null && yv == null) return x._sort_pos - y._sort_pos;
+        if (xv == null) return 1;
+        if (yv == null) return -1;
+
+        var c = sortAscending ? sortCompare(xv,yv) : sortCompare(yv,xv);
+        if (c !== 0) return c;
+
+        return x._sort_pos - y._sort_pos;
+}
+
+function resortTable() {
+        // number the existing rows so we can do a stable sort
+        // regardless of whether sort() is stable or not.
+        // Also extract the sort comparison value.
+        for (var i = 0; i < PlanesOrdered.length; ++i) {
+                PlanesOrdered[i]._sort_pos = i;
+                PlanesOrdered[i]._sort_value = sortExtract(PlanesOrdered[i]);
+        }
+
+        PlanesOrdered.sort(sortFunction);
+        
+        var tbody = document.getElementById('tableinfo').tBodies[0];
+        for (var i = 0; i < PlanesOrdered.length; ++i) {
+                tbody.appendChild(PlanesOrdered[i].tr);
+        }
+}
+
+function sortBy(id,sc,se) {
+        if (id === sortId) {
+                sortAscending = !sortAscending;
+                PlanesOrdered.reverse(); // this correctly flips the order of rows that compare equal
+        } else {
+                sortAscending = true;
+        }
+
+        sortId = id;
+        sortCompare = sc;
+        sortExtract = se;
+
+        resortTable();
+}
+
+function selectPlaneByHex(hex,autofollow) {
+        //console.log("select: " + hex);
+	// If SelectedPlane has something in it, clear out the selected
+	if (SelectedPlane != null) {
+		Planes[SelectedPlane].selected = false;
+		Planes[SelectedPlane].clearLines();
+		Planes[SelectedPlane].updateMarker();
+                $(Planes[SelectedPlane].tr).removeClass("selected");
+	}
+
+	// If we are clicking the same plane, we are deselecting it.
+        // (unless it was a doubleclick..)
+	if (SelectedPlane === hex && !autofollow) {
+                hex = null;
+        }
+
+        if (hex !== null) {
+		// Assign the new selected
+		SelectedPlane = hex;
+		Planes[SelectedPlane].selected = true;
+		Planes[SelectedPlane].updateLines();
+		Planes[SelectedPlane].updateMarker();
+                $(Planes[SelectedPlane].tr).addClass("selected");
+	} else { 
+		SelectedPlane = null;
+	}
+
+        if (SelectedPlane !== null && autofollow) {
+                FollowSelected = true;
+                if (OLMap.getView().getZoom() < 8)
+                        OLMap.getView().setZoom(8);
+        } else {
+                FollowSelected = false;
+        } 
+
+        refreshSelected();
+}
+
+function toggleFollowSelected() {
+        FollowSelected = !FollowSelected;
+        if (FollowSelected && OLMap.getView().getZoom() < 8)
+                OLMap.getView().setZoom(8);
+        refreshSelected();
+}
+
+function resetMap() {
+        // Reset localStorage values and map settings
+        localStorage['CenterLat'] = CenterLat = DefaultCenterLat;
+        localStorage['CenterLon'] = CenterLon = DefaultCenterLon;
+        localStorage['ZoomLvl']   = ZoomLvl = DefaultZoomLvl;
+
+        // Set and refresh
+        OLMap.getView().setZoom(ZoomLvl);
+	OLMap.getView().setCenter(ol.proj.fromLonLat([CenterLon, CenterLat]));
+	
+	selectPlaneByHex(null,false);
 }
